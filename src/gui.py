@@ -6,18 +6,53 @@ PALETTE = [
 	('other-username', 'light magenta', ''),
 	('current-channel', 'light magenta', ''),
 	('mentions', 'light blue', ''),
-	('header', '', ''),
-	('footer', '', ''),
-	('selected', 'standout', ''),
+	('header', 'light green', 'light gray'),
+	('footer', 'light green', ''),
+	('selected', '', '', 'standout'),
 ]
 
 SHORTCUTS = {
 	'scroll-up': 'ctrl a',
 	'scroll-down': 'ctrl d',
 	'scroll-top': 'ctrl f',
-	'scroll-bottom': 'ctrl g'
+	'scroll-bottom': 'ctrl g',
+	'exit': 'ctrl x'
 }
 
+
+#API mountpoint
+
+class APIMountpoint:
+	api_object = None
+	gui_root = None
+
+	@classmethod
+	def set_api_object(cls, object):
+		cls.api_object = object
+
+	@classmethod
+	def set_gui_root(cls, root):
+		cls.gui_root = root
+
+	@classmethod
+	def send_message(cls, message):
+		#TODO: Implement send_message
+		pass
+
+	@classmethod
+	def recv_messages(cls, messages):
+		#TODO: Implement recv_messages
+		pass
+
+	@classmethod
+	def switch_channel(cls, channel):
+		#TODO: Implement switch_channel
+		pass
+
+	@classmethod
+	def start_loop(cls):
+		assert cls.api_object
+		#TODO: Implement start_loop
 
 
 
@@ -110,7 +145,7 @@ class UserInputHandler:
 			channel = input_text[3:]
 			#do some work from her
 		else:
-			cls.screen.child.main_window.messages.append(urwid.AttrMap(UserMessage([('my-username', 'fusc: '), input_text]), None, focus_map='selected'))
+			cls.screen.child.main_window.messages.append(UserMessage([('my-username', 'fusc: '), input_text], None, focus_map='selected'))
 			try:
 				cls.screen.child.main_window.messages.corresponding_widget().original_widget.focus_next()
 			except IndexError:
@@ -122,6 +157,7 @@ class MainScreen(Constructor):
 	def __init__(self):
 		self.child = ScreenSplit()
 		super(MainScreen, self).__init__()
+		Selector.select(self.child.main_window.text_entry)
 
 	def __construct(self, child):
 		class MainScreenWidget(urwid.Frame):
@@ -171,7 +207,16 @@ class SideBar(Constructor, Listlike):
 			def __init__(self, *args, **kwargs):
 				super(SideBarWidget, self).__init__(*args, **kwargs)
 
+			def keypress(self, size, key):
+				if key == 'tab':
+					Selector.select(UserInputHandler.screen.child.main_window.text_entry)
+				else:
+					pass
+
 		return urwid.LineBox(SideBarWidget(channels))
+
+	def keypress(self, size, key):
+		self.corresponding_widget().keypress(size, key)
 
 	def construct(self):
 		return self.__construct(self.channels)
@@ -208,10 +253,12 @@ class Messages(Constructor, Listlike):
 			def focus_next(self):
 				current_position = self.get_focus()[1]
 				self.set_focus(current_position + 1, coming_from='above')
+				#UserInputHandler.screen.set_footer(repr(self.focus))
 
 			def focus_prev(self):
 				current_position = self.get_focus()[1]
 				self.set_focus(current_position - 1, coming_from='below')
+				#UserInputHandler.screen.set_footer(repr(self.focus))
 
 			def focus_top(self):
 				self.set_focus(0)
@@ -264,6 +311,12 @@ class TextEntry(Constructor):
 					except:
 						os.system('echo \a') #BEEP!
 
+				elif key == SHORTCUTS['exit']:
+					raise urwid.ExitMainLoop()
+
+				elif key == 'tab':
+					Selector.select(UserInputHandler.screen.child.sidebar)
+
 				elif key == 'enter':
 					#TODO: send message
 					UserInputHandler.handle(self.get_edit_text(), self)
@@ -277,6 +330,10 @@ class TextEntry(Constructor):
 	def keypress(self, size, keypress):
 		self.corresponding_widget().keypress(size, keypress)
 
-class UserMessage(urwid.Text):
-	def __init__(self, *args, **kwargs):
-		super(UserMessage, self).__init__(*args, **kwargs)
+class UserMessage(urwid.AttrMap):
+	def __init__(self, text, attribute, focus_map=None):
+		widget = urwid.Text(text)
+		super(UserMessage, self).__init__(widget, attribute, focus_map=focus_map)
+
+	def selectable(self):
+		return True

@@ -1,3 +1,8 @@
+'''
+key-tester.py
+Used to test urwid key inputs
+'''
+
 import urwid
 
 t = urwid.Text('', align='center')
